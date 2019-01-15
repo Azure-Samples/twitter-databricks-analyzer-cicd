@@ -1,4 +1,4 @@
-# Social Posts Pipeline [![Build Status](https://travis-ci.org/Azure-Samples/twitter-databricks-analyzer-cicd.svg?branch=master)](https://travis-ci.org/Azure-Samples/twitter-databricks-analyzer-cicd)
+# Social Posts Pipeline
 
 The following is a Social Post Sentiment processing pipeline implemented within [Azure Databricks](https://azure.microsoft.com/en-au/services/databricks/). 
 This repo contains a generalized solution for running a social post processor on Azure Data Bricks.
