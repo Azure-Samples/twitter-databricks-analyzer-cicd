@@ -3,7 +3,7 @@
 The following is a Social Post Sentiment processing pipeline implemented within [Azure Databricks](https://azure.microsoft.com/en-au/services/databricks/). 
 This repo contains a generalized solution for running a social post processor on Azure Data Bricks.
 
-For the description behind the architecture and investigation behind this solution, follow the [Code Stoey](https://www.microsoft.com/developerblog/2018/12/12/databricks-ci-cd-pipeline-using-travis/).
+For the description behind the architecture and investigation behind this solution, follow the [Code Story](https://www.microsoft.com/developerblog/2018/12/12/databricks-ci-cd-pipeline-using-travis/).
 
 The Data Pipeline consists of:
 - Ingesting tweets from Twitter
