@@ -1,0 +1,37 @@
+{
+    "name": "Score using Recommendation Model",
+    "new_cluster": {
+        "spark_version": "4.1.x-scala2.11",
+        "node_type_id": "Standard_D3_v2",
+        "num_workers": 3,
+        "spark_env_vars": {
+            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+        }
+    },
+    "libraries": [
+        {
+            "maven": {
+                "coordinates": "com.microsoft.sqlserver:mssql-jdbc:6.5.3.jre8-preview"
+            }
+        },
+        {
+            "maven": {
+                "coordinates": "org.json4s:json4s-native_2.11:3.5.4"
+            }
+        }
+    ],
+    "timeout_seconds": 3600,
+    "email_notifications": {
+        "on_start": [],
+        "on_success": [],
+        "on_failure": []
+    },
+    "max_retries": 3,
+    "schedule": {
+        "quartz_cron_expression": "0 0 22 ? * *",
+        "timezone_id": "Israel"
+    },
+    "notebook_task": {
+        "notebook_path": "/notebooks/05_threshold_based_detection"
+    }
+}

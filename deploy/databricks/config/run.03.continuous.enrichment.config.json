@@ -1,0 +1,27 @@
+{
+    "run_name": "Enrichment",
+    "new_cluster": {
+        "spark_version": "4.1.x-scala2.11",
+        "node_type_id": "Standard_D3_v2",
+        "num_workers": 1,
+        "spark_env_vars": {
+            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+        }
+    },
+    "libraries": [
+        {
+            "maven": {
+                "coordinates": "com.microsoft.azure:azure-eventhubs-spark_2.11:2.3.1"
+            }
+        },
+        {
+            "maven": {
+                "coordinates": "org.json4s:json4s-native_2.11:3.5.4"
+            }
+        }
+    ],
+    "timeout_seconds": 3600,
+    "notebook_task": {
+        "notebook_path": "/notebooks/03_enrich_data"
+    }
+}

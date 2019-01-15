@@ -1,0 +1,30 @@
+{
+    "run_name": "Injests Tweets",
+    "new_cluster": {
+        "spark_version": "4.1.x-scala2.11",
+        "node_type_id": "Standard_D3_v2",
+        "num_workers": 1,
+        "spark_env_vars": {
+            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+        }
+    },
+    "libraries": [
+        {
+            "jar": "dbfs:/mnt/jars/social-source-wrapper-1.0-SNAPSHOT.jar"
+        },
+        {
+            "maven": {
+                "coordinates": "com.microsoft.azure:azure-eventhubs-spark_2.11:2.3.1"
+            }
+        },
+        {
+            "maven": {
+                "coordinates": "org.apache.bahir:spark-streaming-twitter_2.11:2.2.0"
+            }
+        }
+    ],
+    "timeout_seconds": 3600,
+    "notebook_task": {
+        "notebook_path": "/notebooks/02_twitter_injest"
+    }
+}

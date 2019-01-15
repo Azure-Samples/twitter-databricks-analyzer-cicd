@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deployNs": {
+      "value": "zcds"
+    },
+    "sqlserverAdminLogin": {
+      "value": "dbadmin"
+    },
+    "sqlserverAdminPassword": {
+      "value": "Password1"
+    },
+    "sendGridPassword": {
+      "value": "Password1"
+    },
+    "sendGridToAddress": {
+      "value": "morshe@microsoft.com"
+    }
+  }
+}

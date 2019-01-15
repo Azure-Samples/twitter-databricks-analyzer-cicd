@@ -1,0 +1,26 @@
+language: python
+jdk: openjdk9
+python: 3.4
+sudo: required
+env:
+  global:
+    - TIMEOUT=1000
+virtualenv:
+  system_site_packages: true
+addons:
+  apt:
+    update: true
+
+before_install:
+  - sudo apt-get update -qq
+  - mvn -f src/ clean install
+  - export STARTDATETIME=$(date +"%Y-%m-%d %H:%M:%S")
+install:
+   - .travis/install.sh
+before_script:
+   - .travis/login.sh
+script:
+  - make configure_databricks test=true
+  - java -jar src/integration-tests/target/integration-tests-1.0-SNAPSHOT-jar-with-dependencies.jar "$STARTDATETIME"
+after_script:
+  - make test_cleanup

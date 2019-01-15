@@ -1,0 +1,541 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deployNs": {
+      "type": "string"
+    },
+    "dbricksWorkspaceName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'dbricks', uniqueString(resourceGroup().id))]",
+      "type": "string"
+    },
+    "dbricksLocation": {
+      "defaultValue": "[resourceGroup().location]",
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault secret name which references the AD Service Principal password"
+      }
+    },
+    "dbricksTier": {
+      "defaultValue": "premium",
+      "type": "string",
+      "allowedValues": [
+        "premium",
+        "standard"
+      ]
+    },
+    "eventhubsNsName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'ehns', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "Event Hubs namespace name"
+      }
+    },
+    "eventhubsLocation": {
+      "defaultValue": "[resourceGroup().location]",
+      "type": "string",
+      "metadata": {
+        "description": "Event Hubs location"
+      }
+    },
+    "eventhubInputName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'ehinput', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "Event Hub containing raw data items data"
+      }
+    },
+    "eventhubEnrichedName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'ehenriched', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "Event Hub containing enriched data items data"
+      }
+    },
+    "eventhubAlertsName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'ehalerts', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "Event Hub containing alerts data"
+      }
+    },
+    "storAccountName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'stor', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name"
+      }
+    },
+    "storLocation": {
+      "defaultValue": "[resourceGroup().location]",
+      "type": "string",
+      "metadata": {
+        "description": "Storage account location"
+      }
+    },
+    "textAnalyticsName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'textanalytics', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "Cognitive services text analytics name"
+      }
+    },
+    "sqlServerName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'sqlsrv', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "SQL Server Name"
+      }
+    },
+    "sqlDatabaseName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'socialdb', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "SQL Social Database Name"
+      }
+    },
+    "sqlserverAdminLogin": {
+      "defaultValue": "[concat('l', uniqueString(resourceGroup().id, '9A08DDB9-95A1-495F-9263-D89738ED4205'))]",
+      "type": "string",
+      "metadata": {
+        "description": "SQL Database Administrator User Name"
+      }
+    },
+    "sqlserverAdminPassword": {
+      "defaultValue": "[concat('P', uniqueString(resourceGroup().id, '224F5A8B-51DB-46A3-A7C8-59B0DD584A41'), 'x', '!')]",
+      "type": "string",
+      "metadata": {
+        "description": "SQL Database Administrator Password"
+      }
+    },
+    "sqldatabaseEdition": {
+      "defaultValue": "Standard",
+      "type": "string"
+    },
+    "sqldatabaseCollation": {
+      "defaultValue": "SQL_Latin1_General_CP1_CI_AS",
+      "type": "string"
+    },
+    "sqldatabaseMaxSizeBytes": {
+      "defaultValue": "268435456000",
+      "type": "string"
+    },
+    "sqlrequestedServiceObjectiveName": {
+      "defaultValue": "S0",
+      "type": "string"
+    },
+    "sendGridName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'sgemails', uniqueString(resourceGroup().id))]",
+      "type": "string"
+    },
+    "sendGridPassword": {
+      "defaultValue": "[concat('P', uniqueString(resourceGroup().id, '1B6725E8-BA8B-4A68-8971-1DE435A52B54'), 'x', '!')]",
+      "type": "string"
+    },
+    "sendGridToAddress": {
+      "defaultValue": "",
+      "type": "string"
+    },
+    "svcPlanName": {
+      "defaultValue": "[concat(parameters('deployNs'), 'svcplan', uniqueString(resourceGroup().id))]",
+      "type": "string",
+      "metadata": {
+        "description": "The name of the App Service plan to create for hosting the logic app."
+      }
+    },
+    "svcPlanSKU": {
+      "type": "string",
+      "defaultValue": "Standard",
+      "allowedValues": [
+        "Free",
+        "Basic",
+        "Standard",
+        "Premium"
+      ],
+      "metadata": {
+        "description": "The pricing tier for the app service plan."
+      }
+    },
+    "restFunctionAppName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('deployNs'), 'restfunc', uniqueString(resourceGroup().id))]"
+    },
+    "restFunctionAppRepoUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/morsh/social-rest-webapp"
+    },
+    "restFunctionAppBranch": {
+      "type": "string",
+      "defaultValue": "master"
+    },
+    "restFunctionAppManualIntegration": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "textAnalyticsFuncName": {
+      "type": "string",
+      "defaultValue": "TextAnalyticsProcessor"
+    }
+  },
+  "variables": {
+    "managedResourceGroupId": "[concat(subscription().id, '/resourceGroups/', variables('managedResourceGroupName'))]",
+    "managedResourceGroupName": "[concat('databricks-rg-', parameters('dbricksWorkspaceName'), '-', uniqueString(parameters('dbricksWorkspaceName'), resourceGroup().id))]",
+    "eventhubInputName": "[concat(parameters('eventhubsNsName'), '/', parameters('eventhubInputName'))]",
+    "eventhubEnrichedName": "[concat(parameters('eventhubsNsName'), '/', parameters('eventhubEnrichedName'))]",
+    "eventhubAlertsName": "[concat(parameters('eventhubsNsName'), '/', parameters('eventhubAlertsName'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-04-01",
+      "location": "[parameters('dbricksLocation')]",
+      "type": "Microsoft.Databricks/workspaces",
+      "name": "[parameters('dbricksWorkspaceName')]",
+      "tags": {
+        "displayName": "Databricks Workspace"
+      },
+      "sku": {
+        "name": "[parameters('dbricksTier')]"
+      },
+      "properties": {
+        "ManagedResourceGroupId": "[variables('managedResourceGroupId')]"
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      "name": "[parameters('eventhubsNsName')]",
+      "apiVersion": "2017-04-01",
+      "location": "[parameters('eventhubsLocation')]",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "isAutoInflateEnabled": true,
+        "maximumThroughputUnits": 20
+      },
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/AuthorizationRules",
+      "name": "[concat(parameters('eventhubsNsName'), '/RootManageSharedAccessKey')]",
+      "apiVersion": "2017-04-01",
+      "location": "[parameters('eventhubsLocation')]",
+      "scale": null,
+      "properties": {
+        "rights": [
+          "Manage",
+          "Listen",
+          "Send"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('eventhubsNsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "name": "[variables('eventhubInputName')]",
+      "apiVersion": "2017-04-01",
+      "location": "[parameters('eventhubsLocation')]",
+      "scale": null,
+      "properties": {
+        "messageRetentionInDays": 1,
+        "partitionCount": 2,
+        "status": "Active"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('eventhubsNsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "name": "[variables('eventhubEnrichedName')]",
+      "apiVersion": "2017-04-01",
+      "location": "[parameters('eventhubsLocation')]",
+      "scale": null,
+      "properties": {
+        "messageRetentionInDays": 1,
+        "partitionCount": 2,
+        "status": "Active"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('eventhubsNsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "name": "[variables('eventhubAlertsName')]",
+      "apiVersion": "2017-04-01",
+      "location": "[parameters('eventhubsLocation')]",
+      "scale": null,
+      "properties": {
+        "messageRetentionInDays": 1,
+        "partitionCount": 2,
+        "status": "Active"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('eventhubsNsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "kind": "StorageV2",
+      "name": "[parameters('storAccountName')]",
+      "apiVersion": "2017-10-01",
+      "location": "[parameters('storLocation')]",
+      "tags": {
+        "displayname": "Databricks storage"
+      },
+      "properties": {
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "enabled": true
+            },
+            "blob": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "name": "[parameters('textAnalyticsName')]",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "sku": {
+        "name": "S1"
+      },
+      "kind": "TextAnalytics",
+      "apiVersion": "2016-02-01-preview",
+      "location": "[resourceGroup().location]",
+      "scale": null,
+      "properties": {},
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.Sql/servers",
+      "kind": "v12.0",
+      "name": "[parameters('sqlServerName')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "westeurope",
+      "scale": null,
+      "properties": {
+        "administratorLogin": "[parameters('sqlserverAdminLogin')]",
+        "administratorLoginPassword": "[parameters('sqlserverAdminPassword')]",
+        "version": "12.0"
+      },
+      "dependsOn": [],
+      "resources": [
+        {
+          "apiVersion": "2015-05-01-preview",
+          "name": "[parameters('sqlDatabaseName')]",
+          "type": "databases",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[concat('Microsoft.Sql/servers/', parameters('sqlserverName'))]"
+          ],
+          "properties": {
+            "edition": "[parameters('sqldatabaseEdition')]",
+            "collation": "[parameters('sqldatabaseCollation')]",
+            "maxSizeBytes": "[parameters('sqldatabaseMaxSizeBytes')]",
+            "requestedServiceObjectiveName": "[parameters('sqlrequestedServiceObjectiveName')]"
+          }
+        },
+        {
+          "apiVersion": "2015-05-01-preview",
+          "type": "Microsoft.Sql/servers/firewallrules",
+          "dependsOn": [
+            "[concat('Microsoft.Sql/servers/', parameters('sqlserverName'))]"
+          ],
+          "location": "[resourceGroup().location]",
+          "name": "[concat(parameters('sqlserverName'), '/', 'AllowAllWindowsAzureIps')]",
+          "properties": {
+            "endIpAddress": "0.0.0.0",
+            "startIpAddress": "0.0.0.0"
+          }
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-01-01",
+      "name": "[parameters('sendGridName')]",
+      "type": "Sendgrid.Email/accounts",
+      "location": "[resourceGroup().location]",
+      "plan": {
+        "name": "free",
+        "publisher": "Sendgrid",
+        "product": "sendgrid_azure",
+        "promotionCode": ""
+      },
+      "properties": {
+        "password": "[parameters('sendGridPassword')]",
+        "acceptMarketingEmails": false,
+        "email": ""
+      }
+    },
+    {
+      "name": "[parameters('svcPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2014-06-01",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "name": "[parameters('svcPlanName')]",
+        "sku": "[parameters('svcPlanSKU')]",
+        "workerSize": 0,
+        "numberOfWorkers": 1
+      }
+    },
+    {
+      "name": "[parameters('restFunctionAppName')]",
+      "type": "Microsoft.Web/sites",
+      "kind": "functionapp",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2014-06-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('svcPlanName'))]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', resourceGroup().id, '/providers/Microsoft.Web/serverfarms/', parameters('svcPlanName'))]": "Resource",
+        "displayName": "[parameters('restFunctionAppName')]"
+      },
+      "properties": {
+        "name": "[parameters('restFunctionAppName')]",
+        "serverFarm": "[parameters('svcPlanName')]"
+      },
+      "resources": [
+        {
+          "type": "config",
+          "name": "appsettings",
+          "apiVersion": "2015-08-01",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites/', parameters('restFunctionAppName'))]",
+            "[resourceId('Microsoft.Storage/storageAccounts', parameters('storAccountName'))]",
+            "[resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', parameters('eventhubsNsName'), 'RootManageSharedAccessKey')]",
+            "[resourceId('Sendgrid.Email/accounts', parameters('sendGridName'))]"
+          ],
+          "properties": {
+            "toAddress": "[parameters('sendGridToAddress')]",
+            "sendgridSmtpServer": "[reference(resourceId('Sendgrid.Email/accounts', parameters('sendGridName'))).smtpServer]",
+            "sendgridUsername": "[reference(resourceId('Sendgrid.Email/accounts', parameters('sendGridName'))).username]",
+            "sendgridPassword": "[parameters('sendGridPassword')]",
+            "AzureWebJobsDashboard": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storAccountName')), '2015-05-01-preview').key1)]",
+            "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storAccountName')), '2015-05-01-preview').key1)]",
+            "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storAccountName')),'2015-05-01-preview').key1)]",
+            "WEBSITE_CONTENTSHARE": "[toLower(parameters('restFunctionAppName'))]",
+            "EVENTHUBS_CONNECTIONSTRING": "[listkeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', parameters('eventhubsNsName'), 'RootManageSharedAccessKey'), '2017-04-01').primaryConnectionString]",
+            "EVENTHUBS_EH_NAME": "[parameters('eventhubAlertsName')]",
+            "FUNCTIONS_EXTENSION_VERSION": "~1"
+          }
+        },
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites/', parameters('restFunctionAppName'))]",
+            "[resourceId('Microsoft.Web/sites/config', parameters('restFunctionAppName'), 'appsettings')]"
+          ],
+          "properties": {
+            "RepoUrl": "[parameters('restFunctionAppRepoUrl')]",
+            "branch": "[parameters('restFunctionAppBranch')]",
+            "IsManualIntegration": "[parameters('restFunctionAppManualIntegration')]"
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "dbricksWorkspaceName": {
+      "value": "[parameters('dbricksWorkspaceName')]",
+      "type": "string"
+    },
+    "dbricksLocation": {
+      "value": "[parameters('dbricksLocation')]",
+      "type": "string"
+    },
+    "storAccountName": {
+      "value": "[parameters('storAccountName')]",
+      "type": "string"
+    },
+    "eventhubsNsName": {
+      "value": "[parameters('eventhubsNsName')]",
+      "type": "string"
+    },
+    "eventhubsAccessKey": {
+      "value": "[listkeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', parameters('eventhubsNsName'), 'RootManageSharedAccessKey'), '2017-04-01').primaryConnectionString]",
+      "type": "string"
+    },
+    "eventhubInputName": {
+      "value": "[parameters('eventhubInputName')]",
+      "type": "string"
+    },
+    "eventhubEnrichedName": {
+      "value": "[parameters('eventhubEnrichedName')]",
+      "type": "string"
+    },
+    "eventhubAlertsName": {
+      "value": "[parameters('eventhubAlertsName')]",
+      "type": "string"
+    },
+    "sqlServerName": {
+      "value": "[parameters('sqlServerName')]",
+      "type": "string"
+    },
+    "sqlDatabaseName": {
+      "value": "[parameters('sqlDatabaseName')]",
+      "type": "string"
+    },
+    "sqlServerAdminLogin": {
+      "value": "[parameters('sqlserverAdminLogin')]",
+      "type": "string"
+    },
+    "sqlServerAdminPassword": {
+      "value": "[parameters('sqlserverAdminPassword')]",
+      "type": "string"
+    },
+    "textanalyticsKey1": {
+      "type": "string",
+      "value": "[listKeys(parameters('textAnalyticsName'),'2016-02-01-preview').key1]"
+    },
+    "textanalyticsEndpoint": {
+      "type": "string",
+      "value": "[reference(parameters('textAnalyticsName'),'2016-02-01-preview').endpoint]"
+    },
+    "toAddress": {
+      "type": "string",
+      "value": "[parameters('sendGridToAddress')]"
+    },
+    "sendgridSmtpServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Sendgrid.Email/accounts', parameters('sendGridName'))).smtpServer]"
+    },
+    "sendgridUsername": {
+      "type": "string",
+      "value": "[reference(resourceId('Sendgrid.Email/accounts', parameters('sendGridName'))).username]"
+    },
+    "sendgridPassword": {
+      "type": "string",
+      "value": "[parameters('sendgridPassword')]"
+    },
+    "textAnalyticsHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('restFunctionAppName'))).defaultHostName]"
+    }
+  }
+}
