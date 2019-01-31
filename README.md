@@ -6,6 +6,7 @@ This repo contains a generalized solution for running a social post processor on
 For the description behind the architecture and investigation behind this solution, follow the [Code Story](https://www.microsoft.com/developerblog/2018/12/12/databricks-ci-cd-pipeline-using-travis/).
 
 The Data Pipeline consists of:
+
 - Ingesting tweets from Twitter
 - Enriching tweets with *Language* and *Associated Entities*
 - Identifying recent trends (last 15 minutes)
@@ -13,20 +14,23 @@ The Data Pipeline consists of:
 - Saving historical data in an SQL database
 - Sending an email (or triggering an Azure Function event) on new alerts
 
-This repo also integrates a **CI/CD Pipeline** as part of the generalized solution with e-2-e testing.
+This repo also integrates a **CI/CD Pipeline** as part of the generalized solution with an e-2-e testing.
 The CI/CD Pipeline consists of:
+
 - TravisCI based process(See [.travis.yml](.travis.yml))
 - A Build Status Tag (To see if the last build/PR is successful or faulty)
 - Building of artifacts
 - Deploying notebooks and artifacts into Azure Databricks test environment (using databricks-cli)
-- Executing the pipeline on test environment
+- Executing the pipeline on the test environment
 - Observing the generated alerts to determine success/fail
 - Cleanup solution
 
 ## Data Pipeline Architecture
+
 ![Pipelin Architecture](/docs/ci-cd-pipeline-cloud-architecture.png)
 
 ## CI/CD Pipeline Architecture
+
 ![CI/CD Pipeline Architecture](/docs/ci-cd-pipeline-ci-cd-diagram.png)
 
 # Deployment
@@ -43,6 +47,7 @@ Ensure you are in the root of the repository and logged in to the Azure cli by r
 - Check the requirements.txt for list of necessary Python packages. (will be installed by `make requirements`)
 
 ## Deployment Machine
+
 The deployment is done using [Python Virtual Environment](https://docs.python-guide.org/dev/virtualenvs/).
 
 - The following works with [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
@@ -50,7 +55,7 @@ The deployment is done using [Python Virtual Environment](https://docs.python-gu
 - `source bin/activate`  This activates the virtual environment.
 - TODO: Add _ext.env
 - `make requirements`. This installs python dependencies in the virtual environment.
-- WARNING: The line endings of the two shell scripts `deploy.sh` and `databricks/configure.sh` may cause errors in your interpreter. You can change the line endings by opening the files in VS Code, and changing in the botton right of the editor.
+- WARNING: The line endings of the two shell scripts `deploy.sh` and `databricks/configure.sh` may cause errors in your interpreter. You can change the line endings by opening the files in VS Code, and changing in the bottom right of the editor.
 
 ## Deploy Entire Solution
 
@@ -86,11 +91,12 @@ DBENV_TWITTER_OAUTH_TOKEN_SECRET={FROM_TWITTER}
 
 # Integration Tests
 
-Main Assumption: The current design of the integration test pipeline, enables only one test to run e-2-e at any given moment, becuase of shared resources.
-That said, in case the integration tests are able to spin-up/down an entire environment, that would not be an issue, since each test runs on an encapsulated environment. The injest notebook allows you to input a custom source and run the pipeline on this source.
+Main Assumption: The current design of the integration test pipeline, enables only one test to run e-2-e at any given moment, because of shared resources.
+That said, in case the integration tests can spin-up/down an entire environment, that would not be an issue since each test runs on an encapsulated environment. The ingest notebook allows you to input a custom source and run the pipeline on this source.
 
 ## Deploying a Test environment
-To create a new secondary environment that's ready for integration testing, it is necessary to deploy a new environment, but there's no need to configure it.
+
+To create a new secondary environment that's ready for integration testing, you need to deploy a new environment, but there's no need to configure it.
 For that purpose you can run the following commands:
 
 ```sh
@@ -98,7 +104,7 @@ make deploy_resources resource-group-name=test-social-rg region=westeurope subsc
 make create_secrets
 ```
 
-Those two commands, will deploy a new environment to Azure, then configure the Databricks environment with the appropriate secrets.
+Those two commands will deploy a new environment to Azure, then configure the Databricks environment with the appropriate secrets.
 You will also need to create a local file `databricks.env` in the root of the project, containing:
 
 ```
@@ -111,6 +117,7 @@ DBENV_SQL_JDBC_PORT=1433
 (You can use the full file with the twitter production configuration as well. Those keys will simply be ignored in the test environment).
 
 ## Connect to Travis-CI
+
 This project displays how to connect [Travis-CI](https://travis-ci.org) to enable continuous integration and e2e validation.
 To achieve that you need to perform the following tasks:
 
@@ -137,7 +144,7 @@ The [test.sh](/.travis/test.sh) script, run by Travis, activate the make command
 
 > org.apache.spark.SparkException: Job aborted due to stage failure: Task 0 in stage 145.0 failed 4 times, most recent failure: Lost task 0.3 in stage 145.0 (TID 1958, 10.139.64.4, executor 0): org.apache.spark.SparkException: Failed to execute user defined function($anonfun$9: (string) => string)
 
-This issue may be `Caused by: org.apache.http.client.HttpResponseException: Too Many Requests` due to cognitive services throtteling limit on API requests.
+This issue may be `Caused by: org.apache.http.client.HttpResponseException: Too Many Requests` due to cognitive services throttling limit on API requests.
 
 > java.util.NoSuchElementException: An error occurred while enumerating the result, check the original exception for details.
 
