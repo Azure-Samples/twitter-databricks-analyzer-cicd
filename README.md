@@ -1,4 +1,16 @@
-# Social Posts Pipeline
+---
+page_type: sample
+description: "The following is a Social Post Sentiment processing pipeline implemented within Azure Databricks."
+languages:
+- python
+- java
+products:
+- azure
+- azure-databricks
+---
+
+
+# Social Posts Pipeline in Azure Databricks
 
 The following is a Social Post Sentiment processing pipeline implemented within [Azure Databricks](https://azure.microsoft.com/en-au/services/databricks/). 
 This repo contains a generalized solution for running a social post processor on Azure Data Bricks.
