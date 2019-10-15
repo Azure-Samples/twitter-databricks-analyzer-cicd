@@ -41,11 +41,11 @@ The CI/CD Pipeline consists of:
 ## CI/CD Pipeline Architecture
 ![CI/CD Pipeline Architecture](/docs/ci-cd-pipeline-ci-cd-diagram.png)
 
-# Deployment
+## Deployment
 
 Ensure you are in the root of the repository and logged in to the Azure cli by running `az login`.
 
-## Requirements
+### Requirements
 
 - Scripts and installations must be run from **bash** (wether on Windows or other platforms)
 - [Azure CLI 2.0](https://azure.github.io/projects/clis/)
@@ -54,7 +54,7 @@ Ensure you are in the root of the repository and logged in to the Azure cli by r
 - [jq tool](https://stedolan.github.io/jq/download/)
 - Check the requirements.txt for list of necessary Python packages. (will be installed by `make requirements`)
 
-## Deployment Machine
+### Deployment Machine
 The deployment is done using [Python Virtual Environment](https://docs.python-guide.org/dev/virtualenvs/).
 
 - The following works with [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
@@ -64,7 +64,7 @@ The deployment is done using [Python Virtual Environment](https://docs.python-gu
 - `make requirements`. This installs python dependencies in the virtual environment.
 - WARNING: The line endings of the two shell scripts `deploy.sh` and `databricks/configure.sh` may cause errors in your interpreter. You can change the line endings by opening the files in VS Code, and changing in the botton right of the editor.
 
-## Deploy Entire Solution
+### Deploy Entire Solution
 
 - Make sure to create the following file `databricks.env` in the root of the project:
 
@@ -84,7 +84,7 @@ DBENV_TWITTER_OAUTH_TOKEN_SECRET={FROM_TWITTER}
 - When prompted for a token, you can [generate a new token](https://docs.databricks.com/api/latest/authentication.html) in the databricks workspace.
 - To view additional make commands run `make`
 
-# Make Options
+## Make Options
 
 - `make test_environment`: Test python environment is setup correctly
 - `make requirements`: Install Python Dependencies
@@ -96,12 +96,12 @@ DBENV_TWITTER_OAUTH_TOKEN_SECRET={FROM_TWITTER}
 - `make lint`: Lint using flake8
 - `make create_environment`: Set up python interpreter environment
 
-# Integration Tests
+## Integration Tests
 
 Main Assumption: The current design of the integration test pipeline, enables only one test to run e-2-e at any given moment, becuase of shared resources.
 That said, in case the integration tests are able to spin-up/down an entire environment, that would not be an issue, since each test runs on an encapsulated environment. The injest notebook allows you to input a custom source and run the pipeline on this source.
 
-## Deploying a Test environment
+### Deploying a Test environment
 To create a new secondary environment that's ready for integration testing, it is necessary to deploy a new environment, but there's no need to configure it.
 For that purpose you can run the following commands:
 
@@ -122,7 +122,7 @@ DBENV_SQL_JDBC_PORT=1433
 
 (You can use the full file with the twitter production configuration as well. Those keys will simply be ignored in the test environment).
 
-## Connect to Travis-CI
+### Connect to Travis-CI
 This project displays how to connect [Travis-CI](https://travis-ci.org) to enable continuous integration and e2e validation.
 To achieve that you need to perform the following tasks:
 
@@ -145,7 +145,7 @@ To achieve that you need to perform the following tasks:
 
 The [test.sh](/.travis/test.sh) script, run by Travis, activate the make command `configure_databricks` with an extra parameter of `test=true` which causes the script to execute each notebook with an extra parameter which indicates an e-2-e validation test and enables the environment to execute accordingly.
 
-# Potential Issues
+## Potential Issues
 
 > org.apache.spark.SparkException: Job aborted due to stage failure: Task 0 in stage 145.0 failed 4 times, most recent failure: Lost task 0.3 in stage 145.0 (TID 1958, 10.139.64.4, executor 0): org.apache.spark.SparkException: Failed to execute user defined function($anonfun$9: (string) => string)
 
@@ -170,11 +170,11 @@ EOF
 """, true)
 ```
 
-# Additional Links
+## Additional Links
 
 Code base for REST function app: [https://github.com/morsh/social-rest-webapp](https://github.com/morsh/social-rest-webapp)
 
-# Contributing
+## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
