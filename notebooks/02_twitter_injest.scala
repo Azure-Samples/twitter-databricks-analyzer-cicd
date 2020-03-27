@@ -22,7 +22,7 @@ println("Source used = " + socialSourceParam)
 // Define Event hub configuration
 val eventhub_namespace = dbutils.preview.secret.get("storage_scope", "eventhub_namespace")
 val eventhub_input = dbutils.preview.secret.get("storage_scope", "eventhub_input")
-val eventhub_key = dbutils.preview.secret.get("storage_scope", "eventhub_connectstring")
+val eventhub_key = dbutils.preview.secret.get("storage_scope", "eventhub_key")
 val eventhub_keyname = "RootManageSharedAccessKey"
 val connStr = s"Endpoint=sb://${eventhub_namespace}.servicebus.windows.net/;" +
                            s"EntityPath=${eventhub_input};" +
