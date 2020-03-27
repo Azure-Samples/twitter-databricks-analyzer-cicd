@@ -4,29 +4,33 @@
  */
 package com.microsoft.azure.eventhubs.checkstatus;
 
-import com.microsoft.azure.eventhubs.ConnectionStringBuilder;
-import com.microsoft.azure.eventhubs.EventData;
-import com.microsoft.azure.eventhubs.EventHubClient;
-import com.microsoft.azure.eventhubs.EventHubException;
-import com.microsoft.azure.eventhubs.EventPosition;
-import com.microsoft.azure.eventhubs.EventHubRuntimeInformation;
-import com.microsoft.azure.eventhubs.PartitionReceiver;
-
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import com.azure.messaging.eventhubs.EventData;
+import com.azure.messaging.eventhubs.EventHubClientBuilder;
+import com.azure.messaging.eventhubs.EventHubConsumerAsyncClient;
+import com.azure.messaging.eventhubs.models.EventPosition;
+import com.azure.messaging.eventhubs.models.PartitionContext;
 
 import org.json.*;
 
+import reactor.core.Disposable;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public class ReceiveByDateTime {
-
+    private static final Duration OPERATION_TIMEOUT = Duration.ofSeconds(30);
+    private static final int NUMBER_OF_EVENTS = 100;
     public static void main(String[] args)
-            throws EventHubException, ExecutionException, InterruptedException, IOException {
-
+            throws ExecutionException, InterruptedException, IOException {
+        CountDownLatch countDownLatch = new CountDownLatch(NUMBER_OF_EVENTS);
         final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime argStartTime = null;
 
@@ -67,82 +71,74 @@ public class ReceiveByDateTime {
             System.exit(1);
         }
 
-        final ConnectionStringBuilder connStr = new ConnectionStringBuilder().setNamespaceName(namespaceName)
-                .setEventHubName(eventHubName).setSasKeyName(sasKeyName).setSasKey(sasKey);
+        final String connStr = String.format("Endpoint=sb://%s.servicebus.windows.net/;", namespaceName) +
+                               String.format("EntityPath=%s;", eventHubName) +
+                               String.format("SharedAccessKeyName=RootManageSharedAccessKey;", sasKeyName) +
+                               String.format("SharedAccessKey=${eventhub_key}", sasKey);
+       
+        EventHubConsumerAsyncClient consumer = new EventHubClientBuilder()
+            .connectionString(connStr)
+            .consumerGroup(EventHubClientBuilder.DEFAULT_CONSUMER_GROUP_NAME)
+            .buildAsyncConsumerClient();
 
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        final EventHubClient ehClient = EventHubClient.createSync(connStr.toString(), executorService);
+        String firstPartition = consumer.getPartitionIds().blockFirst(OPERATION_TIMEOUT);
 
-        final EventHubRuntimeInformation eventHubInfo = ehClient.getRuntimeInformation().get();
-        final String[] partitionIds = eventHubInfo.getPartitionIds();
+        if (firstPartition == null) {
+            firstPartition = "0";
+        }
 
-        try {
-            String partitionId = partitionIds[0];
+        Disposable subscription = consumer.receiveFromPartition(firstPartition, EventPosition.fromEnqueuedTime(Instant.EPOCH))
+        .subscribe(partitionEvent -> {
+            EventData event = partitionEvent.getData();
+            PartitionContext partitionContext = partitionEvent.getPartitionContext();
 
-            final PartitionReceiver receiver = ehClient.createEpochReceiverSync(
-                    EventHubClient.DEFAULT_CONSUMER_GROUP_NAME, partitionId,
-                    EventPosition.fromEnqueuedTime(Instant.EPOCH), 2345);
+            System.out.print(String.format("[%s] Offset: %s, #: %s, Time: %s, PT: %s, ",
+            new java.util.Date(), event.getOffset(),
+            event.getSequenceNumber(),
+            event.getEnqueuedTime(), partitionContext.getPartitionId()));
+            if (event.getBody() != null) {
 
-            System.out.println("date-time receiver created...");
+                try {
+                    final String dataString = new String(event.getBody(), UTF_8);
+                    final JSONObject obj = new JSONObject(dataString);
+                    final String windowStartString = obj.getString("windowStart");
+                    final LocalDateTime eventDateTime = LocalDateTime.parse(windowStartString,
+                            formatter);
+                    System.out.println("Event Time: " + windowStartString);
 
-            try {
-                final LocalDateTime checkupStartTime = LocalDateTime.now();
-
-                // Making sure 15 minutes haven't passed since the test started
-                while (LocalDateTime.now().minusMinutes(15).isBefore(checkupStartTime)) {
-                    receiver.receive(100).thenAcceptAsync(receivedEvents -> {
-                        int batchSize = 0;
-                        if (receivedEvents != null) {
-                            for (EventData receivedEvent : receivedEvents) {
-                                System.out.print(String.format("[%s] Offset: %s, #: %s, Time: %s, PT: %s, ",
-                                        new java.util.Date(), receivedEvent.getSystemProperties().getOffset(),
-                                        receivedEvent.getSystemProperties().getSequenceNumber(),
-                                        receivedEvent.getSystemProperties().getEnqueuedTime(), partitionId));
-
-                                if (receivedEvent.getBytes() != null) {
-
-                                    try {
-                                        final String dataString = new String(receivedEvent.getBytes(), "UTF8");
-                                        final JSONObject obj = new JSONObject(dataString);
-                                        final String windowStartString = obj.getString("windowStart");
-                                        final LocalDateTime eventDateTime = LocalDateTime.parse(windowStartString,
-                                                formatter);
-                                        System.out.println("Event Time: " + windowStartString);
-
-                                        if (eventDateTime.isAfter(startTime)) {
-                                            System.out.println("Found a processed alert: " + dataString);
-                                            System.exit(0);
-                                        }
-                                    } catch (Exception e) {
-                                        System.out.println("There was a problem parsing the date of the event: "
-                                                + receivedEvent.getBytes());
-                                        continue;
-                                    }
-                                }
-                                batchSize++;
-                            }
-                        }
-
-                        System.out.println(String.format("ReceivedBatch Size: %s", batchSize));
-                    }, executorService).get();
+                    if (eventDateTime.isAfter(startTime)) {
+                        System.out.println("Found a processed alert: " + dataString);
+                        System.exit(0);
+                    }
+                    countDownLatch.countDown();
+                } catch (Exception e) {
+                    System.out.println("There was a problem parsing the date of the event: "
+                            + event.getBody());
+                    countDownLatch.countDown();
                 }
+            }
+        },
+            error -> {
+                System.err.println("Error occurred while consuming events: " + error);
 
-                System.out.println("Could not find a contemporary alert for 15 minutes.");
-                System.exit(1);
-            } finally {
-                // cleaning up receivers is paramount;
-                // Quota limitation on maximum number of concurrent receivers per consumergroup
-                // per partition is 5
-                receiver.close().thenComposeAsync(aVoid -> ehClient.close(), executorService)
-                        .whenCompleteAsync((t, u) -> {
-                            if (u != null) {
-                                // wire-up this error to diagnostics infrastructure
-                                System.out.println(String.format("closing failed with error: %s", u.toString()));
-                            }
-                        }, executorService).get();
+                // Count down until 0, so the main thread does not keep waiting for events.
+                while (countDownLatch.getCount() > 0) {
+                    countDownLatch.countDown();
+                }
+            }, () -> {
+                System.out.println("Finished reading events.");
+            });
+        try {
+            // We wait for all the events to be received before continuing.
+            boolean isSuccessful = countDownLatch.await(OPERATION_TIMEOUT.getSeconds(), TimeUnit.SECONDS);
+            if (!isSuccessful) {
+                System.err.printf("Did not complete successfully. There are: %s events left.%n",
+                    countDownLatch.getCount());
             }
         } finally {
-            executorService.shutdown();
+            // Dispose and close of all the resources we've created.
+            subscription.dispose();
+            consumer.close();
         }
-    }
+    } 
 }
