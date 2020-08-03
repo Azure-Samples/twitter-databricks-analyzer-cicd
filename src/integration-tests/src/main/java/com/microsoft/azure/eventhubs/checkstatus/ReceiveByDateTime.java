@@ -81,10 +81,8 @@ public class ReceiveByDateTime {
             .consumerGroup(EventHubClientBuilder.DEFAULT_CONSUMER_GROUP_NAME)
             .buildAsyncConsumerClient();
 
-        String firstPartition = consumer.getPartitionIds().blockFirst(OPERATION_TIMEOUT);
-
-
-        Disposable subscription = consumer.receiveFromPartition(firstPartition, EventPosition.fromEnqueuedTime(Instant.EPOCH))
+        Disposable subscription  = consumer.getPartitionIds().take(1)
+        .flatMap(partitionId -> consumer.receiveFromPartition(partitionId, EventPosition.fromEnqueuedTime(Instant.EPOCH)))
         .subscribe(partitionEvent -> {
             EventData event = partitionEvent.getData();
             PartitionContext partitionContext = partitionEvent.getPartitionContext();

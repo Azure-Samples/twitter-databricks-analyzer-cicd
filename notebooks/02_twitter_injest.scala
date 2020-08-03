@@ -31,21 +31,15 @@ val connStr = s"Endpoint=sb://${eventhub_namespace}.servicebus.windows.net/;" +
 
 val  producer = new EventHubClientBuilder()
     .connectionString(connStr)
-    .buildProducerClient();
+    .buildProducerClient()
 
 
 // Send data to event hubs
 def sendEvent(message: String) = {
   val messageData = new EventData(message)
-  val batch = producer.createBatch();
-  if(!batch.tryAdd(messageData)) {
-    producer.get().send(batch);
-    batch = producer.createBatch();
-    batch.tryAdd(messageData);
-  }
-  if (eventDataBatch.getCount() > 0) {
-    producer.get().send(batch);
-  }
+  val batch = producer.createBatch()
+  batch.tryAdd(messageData)
+  producer.get().send(batch)
   System.out.println("Sent event: " + message + "\n")
 }
 
