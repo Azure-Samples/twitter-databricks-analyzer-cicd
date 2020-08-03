@@ -83,9 +83,6 @@ public class ReceiveByDateTime {
 
         String firstPartition = consumer.getPartitionIds().blockFirst(OPERATION_TIMEOUT);
 
-        if (firstPartition == null) {
-            firstPartition = "0";
-        }
 
         Disposable subscription = consumer.receiveFromPartition(firstPartition, EventPosition.fromEnqueuedTime(Instant.EPOCH))
         .subscribe(partitionEvent -> {
