@@ -6,12 +6,9 @@ package com.microsoft.azure.eventhubs.checkstatus;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 import com.azure.messaging.eventhubs.EventData;
 import com.azure.messaging.eventhubs.EventHubClientBuilder;
@@ -26,11 +23,9 @@ import reactor.core.Disposable;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ReceiveByDateTime {
-    private static final Duration OPERATION_TIMEOUT = Duration.ofSeconds(30);
-    private static final int NUMBER_OF_EVENTS = 100;
+
     public static void main(String[] args)
             throws ExecutionException, InterruptedException, IOException {
-        CountDownLatch countDownLatch = new CountDownLatch(NUMBER_OF_EVENTS);
         final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime argStartTime = null;
 
@@ -81,56 +76,57 @@ public class ReceiveByDateTime {
             .consumerGroup(EventHubClientBuilder.DEFAULT_CONSUMER_GROUP_NAME)
             .buildAsyncConsumerClient();
 
-        Disposable subscription  = consumer.getPartitionIds().take(1)
-        .flatMap(partitionId -> consumer.receiveFromPartition(partitionId, EventPosition.fromEnqueuedTime(Instant.EPOCH)))
-        .subscribe(partitionEvent -> {
-            EventData event = partitionEvent.getData();
-            PartitionContext partitionContext = partitionEvent.getPartitionContext();
+        Duration applicationDuration = Duration.ofMinutes(15);
 
-            System.out.print(String.format("[%s] Offset: %s, #: %s, Time: %s, PT: %s, ",
-            new java.util.Date(), event.getOffset(),
-            event.getSequenceNumber(),
-            event.getEnqueuedTime(), partitionContext.getPartitionId()));
-            if (event.getBody() != null) {
+        Disposable subscription  = consumer.getPartitionIds()
+            .take(1)
+            .flatMap(partitionId -> consumer.receiveFromPartition(partitionId, EventPosition.earliest()))
+            .take(applicationDuration)
+            .subscribe(partitionEvent -> {
+                    EventData event = partitionEvent.getData();
+                    PartitionContext partitionContext = partitionEvent.getPartitionContext();
+        
+                    System.out.print(String.format("[%s] Offset: %s, #: %s, Time: %s, PT: %s, ",
+                    new java.util.Date(), event.getOffset(),
+                    event.getSequenceNumber(),
+                    event.getEnqueuedTime(), partitionContext.getPartitionId()));
+                    if (event.getBody() != null) {
+        
+                        try {
+                            final String dataString = new String(event.getBody(), UTF_8);
+                            final JSONObject obj = new JSONObject(dataString);
+                            final String windowStartString = obj.getString("windowStart");
+                            final LocalDateTime eventDateTime = LocalDateTime.parse(windowStartString,
+                                    formatter);
+                            System.out.println("Event Time: " + windowStartString);
+        
+                            if (eventDateTime.isAfter(startTime)) {
+                                System.out.println("Found a processed alert: " + dataString);
+                                System.exit(0);
+                            }
+                        } catch (Exception e) {
+                            System.out.println("There was a problem parsing the date of the event: "
+                                    + event.getBody());
+                        }
+                    }           
+                }, error -> {
+                    // onError
+                    System.err.println("Error occurred while consuming events: " + error);
+                }, () -> {
+                    // onComplete
+                    System.out.println("Finished reading events.");
+                });
 
-                try {
-                    final String dataString = new String(event.getBody(), UTF_8);
-                    final JSONObject obj = new JSONObject(dataString);
-                    final String windowStartString = obj.getString("windowStart");
-                    final LocalDateTime eventDateTime = LocalDateTime.parse(windowStartString,
-                            formatter);
-                    System.out.println("Event Time: " + windowStartString);
-
-                    if (eventDateTime.isAfter(startTime)) {
-                        System.out.println("Found a processed alert: " + dataString);
-                        System.exit(0);
-                    }
-                    countDownLatch.countDown();
-                } catch (Exception e) {
-                    System.out.println("There was a problem parsing the date of the event: "
-                            + event.getBody());
-                    countDownLatch.countDown();
-                }
-            }
-        },
-            error -> {
-                System.err.println("Error occurred while consuming events: " + error);
-
-                // Count down until 0, so the main thread does not keep waiting for events.
-                while (countDownLatch.getCount() > 0) {
-                    countDownLatch.countDown();
-                }
-            }, () -> {
-                System.out.println("Finished reading events.");
-            });
         try {
-            // We wait for all the events to be received before continuing.
-            boolean isSuccessful = countDownLatch.await(OPERATION_TIMEOUT.getSeconds(), TimeUnit.SECONDS);
-            if (!isSuccessful) {
-                System.err.printf("Did not complete successfully. There are: %s events left.%n",
-                    countDownLatch.getCount());
-            }
-        } finally {
+            // Sleep the application so it does not end. This is because the .subscribe() is a non-blocking
+            // call. While the thread is sleeping, the subscription will run in the background, processing 
+            // messages.
+            Thread.sleep(applicationDuration.toMillis());
+        } catch (InterruptedException e) {
+            System.err.println("Unable to sleep: " + e);
+        } 
+        
+            finally {
             // Dispose and close of all the resources we've created.
             subscription.dispose();
             consumer.close();
