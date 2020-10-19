@@ -1,6 +1,6 @@
 import java.util._
 import java.util.concurrent._
-import com.microsoft.azure.eventhubs._
+import com.azure.messaging.eventhubs._
 import scala.collection.JavaConverters._
 import collection.JavaConversions._
 import social.pipeline.impl.custom._
@@ -24,20 +24,22 @@ val eventhub_namespace = dbutils.preview.secret.get("storage_scope", "eventhub_n
 val eventhub_input = dbutils.preview.secret.get("storage_scope", "eventhub_input")
 val eventhub_key = dbutils.preview.secret.get("storage_scope", "eventhub_key")
 val eventhub_keyname = "RootManageSharedAccessKey"
-val connStr = new ConnectionStringBuilder()
-  .setNamespaceName(eventhub_namespace)
-  .setEventHubName(eventhub_input)
-  .setSasKeyName(eventhub_keyname)
-  .setSasKey(eventhub_key)
+val connStr = s"Endpoint=sb://${eventhub_namespace}.servicebus.windows.net/;" +
+                           s"EntityPath=${eventhub_input};" +
+                           s"SharedAccessKeyName=RootManageSharedAccessKey;" +
+                           s"SharedAccessKey=${eventhub_key}"
 
-val pool = Executors.newFixedThreadPool(1)
-val eventHubClient = EventHubClient.create(connStr.toString(), pool)
+val  producer = new EventHubClientBuilder()
+    .connectionString(connStr)
+    .buildProducerClient()
 
 
 // Send data to event hubs
 def sendEvent(message: String) = {
-  val messageData = EventData.create(message.getBytes("UTF-8"))
-  eventHubClient.get().send(messageData)
+  val messageData = new EventData(message)
+  val batch = producer.createBatch()
+  batch.tryAdd(messageData)
+  producer.get().send(batch)
   System.out.println("Sent event: " + message + "\n")
 }
 

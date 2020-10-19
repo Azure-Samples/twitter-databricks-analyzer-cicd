@@ -55,10 +55,10 @@
     </dependency>
 
     <dependency>
-      <groupId>com.microsoft.azure</groupId>
-      <artifactId>azure-eventhubs</artifactId>
-      <version>1.0.0</version>
-    </dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-messaging-eventhubs</artifactId>
+      <version>5.2.0</version>
+  </dependency>
   </dependencies>
 
   <build>
